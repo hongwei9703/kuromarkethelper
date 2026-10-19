@@ -71,7 +71,7 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
         if url.path == "/api/state":
-            return self._json(200, load_state(REPO, gitsync.pull(REPO)))
+            return self._json(200, load_state(REPO, gitsync.sync(REPO)))
         if url.path == "/api/search":
             query = (parse_qs(url.query).get("q") or [""])[0].strip()
             if not query:
@@ -99,13 +99,17 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length") or 0)
             change = json.loads(self.rfile.read(length) or b"{}")
-            data = REPO / "data"
-            favs = apply_change(store.load_favourites(data), change)
         except ValueError as e:
             return self._json(400, {"error": str(e)})
-        store.save_favourites(data, favs)
-        label = change.get("itemName") or change.get("itemId")
-        pushed = gitsync.commit_and_push(REPO, ["data/favourites.json"], f"favourites: {change['action']} {label}")
+        data = REPO / "data"
+        with gitsync.LOCK:
+            try:
+                favs = apply_change(store.load_favourites(data), change)
+            except ValueError as e:
+                return self._json(400, {"error": str(e)})
+            store.save_favourites(data, favs)
+            label = change.get("itemName") or change.get("itemId")
+            pushed = gitsync.commit_and_push(REPO, ["data/favourites.json"], f"favourites: {change['action']} {label}")
         self._json(200, {"favourites": favs, "pushed": pushed})
 
 

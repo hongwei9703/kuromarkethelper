@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,6 +24,7 @@ jobs:
       - name: Check prices
         run: python -m tracker.check
       - name: Commit results
+        if: always()
         run: |
           if [ -z "$(git status --porcelain data)" ]; then
             echo "No changes"

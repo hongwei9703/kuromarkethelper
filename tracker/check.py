@@ -1,5 +1,6 @@
 """One price check: search every favourite and append a history record."""
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,16 +15,23 @@ def build_record(listings: list[dict], item_id: int, now: datetime) -> dict:
     return record
 
 
-def run_check(data_dir: Path, search_fn=api.search, now: datetime | None = None) -> dict[int, dict]:
+BUDGET_S = 480  # stay well inside the workflow's timeout so finished items still get committed
+
+
+def run_check(data_dir: Path, search_fn=api.search, now: datetime | None = None,
+              budget_s: float = BUDGET_S, clock=time.monotonic) -> dict[int, dict]:
     now = now or datetime.now(timezone.utc)
     records: dict[int, dict] = {}
+    start = clock()
     for fav in store.load_favourites(data_dir):
+        if clock() - start > budget_s:
+            print(f"SKIPPED {fav['itemName']} and the rest: out of time", file=sys.stderr)
+            break
         try:
-            listings = search_fn(fav["itemName"])
-        except api.SearchError as e:
-            print(f"FAILED {fav['itemName']}: {e}", file=sys.stderr)
+            record = build_record(search_fn(fav["itemName"]), fav["itemId"], now)
+        except Exception as e:  # one bad item must never lose the others
+            print(f"FAILED {fav['itemName']}: {e!r}", file=sys.stderr)
             continue
-        record = build_record(listings, fav["itemId"], now)
         store.append_record(data_dir, fav["itemId"], record)
         records[fav["itemId"]] = record
     return records

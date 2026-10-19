@@ -69,3 +69,29 @@ class CheckTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CheckRobustnessTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.data = Path(self._tmp.name)
+        store.save_favourites(self.data, FAVS)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_run_check_survives_unexpected_exception(self):
+        def broken(name):
+            if name == "A Hyper II":
+                raise ConnectionResetError("remote closed")
+            return [{"itemId": 2, "currency": "PERFECT_PITCH", "quantityPerBundle": 9999}]  # passes the filter, no price
+
+        records = run_check(self.data, search_fn=broken, now=NOW)
+        self.assertEqual(records, {})
+        store.save_favourites(self.data, FAVS)
+        self.assertEqual(list(run_check(self.data, search_fn=canned, now=NOW)), [1, 2])
+
+    def test_run_check_stops_at_time_budget(self):
+        ticks = iter([0, 0, 1000, 1000])
+        records = run_check(self.data, search_fn=canned, now=NOW, budget_s=500, clock=lambda: next(ticks))
+        self.assertEqual(list(records), [1])

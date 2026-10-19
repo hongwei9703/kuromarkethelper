@@ -31,7 +31,8 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) { Fail "GitHub login didn't finish. Run setup again to retry." }
 }
 & $Gh auth setup-git --hostname github.com | Out-Null
-$Login = (& $Gh api user --jq .login).Trim()
+$Login = "$(& $Gh api user --jq .login)".Trim()
+if (-not $Login) { Fail "Couldn't read your GitHub username. Run setup again." }
 Write-Host "Logged in as $Login"
 
 Step 4 "Creating your GitHub repo"

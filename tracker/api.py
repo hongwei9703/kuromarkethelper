@@ -1,11 +1,11 @@
 """Client for the Kuro market search API."""
+import http.client
 import json
 import time
-import urllib.error
 import urllib.request
 
 URL = "https://playkuro.com/api/market/owl-search"
-RETRIES = 2
+RETRIES = 1
 RETRY_SLEEP = 3
 
 
@@ -23,7 +23,7 @@ def _once(item_name: str, timeout: float) -> list[dict]:
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError) as e:
+    except (OSError, http.client.HTTPException, ValueError) as e:  # URLError, resets, timeouts, bad JSON
         raise SearchError(str(e)) from e
     if not isinstance(body, dict) or body.get("success") is not True:
         msg = body.get("msg") if isinstance(body, dict) else None
@@ -31,7 +31,7 @@ def _once(item_name: str, timeout: float) -> list[dict]:
     return body.get("data") or []
 
 
-def search(item_name: str, timeout: float = 20) -> list[dict]:
+def search(item_name: str, timeout: float = 15) -> list[dict]:
     for attempt in range(RETRIES + 1):
         try:
             return _once(item_name, timeout)
