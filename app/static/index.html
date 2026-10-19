@@ -4,59 +4,101 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kuro Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Geist:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="style.css">
   <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
 </head>
 <body>
-  <header class="top">
-    <h1>Kuro Market</h1>
-    <span id="sync" class="badge">Loading…</span>
-  </header>
+  <div class="ambient" aria-hidden="true">
+    <div class="glow glow-a"></div>
+    <div class="glow glow-b"></div>
+    <div class="grain"></div>
+  </div>
 
-  <main>
-    <form id="search-form" class="search" autocomplete="off">
-      <input id="search-input" type="search" placeholder="Search any item… (e.g. Hyper II, Approval)" aria-label="Search items">
-      <button type="submit">Search</button>
-    </form>
-    <section id="search-results" class="results" hidden></section>
-
-    <div class="legend" aria-label="Chart legend">
-      <span><i class="swatch cheapest"></i>Cheapest</span>
-      <span><i class="swatch median"></i>Typical (median)</span>
-      <span class="muted">Prices in Perfect Pitch</span>
+  <nav class="nav" aria-label="Main">
+    <div class="nav-pill">
+      <a class="brand" href="/" aria-label="Kuro Market home">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 23 L12 15 L17 19 L27 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="8" r="2.6" fill="currentColor"/></svg>
+        <span>Kuro Market</span>
+      </a>
+      <form id="search-form" class="search" autocomplete="off" role="search">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16 L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="search-input" type="search" placeholder="Search any item" aria-label="Search items">
+        <kbd class="hint">/</kbd>
+      </form>
+      <span id="sync" class="sync" title="">
+        <span class="dot"></span><span class="sync-label">Loading</span>
+      </span>
     </div>
+  </nav>
+
+  <main class="page">
+    <header class="masthead">
+      <div class="masthead-copy">
+        <h1>Market pulse</h1>
+        <p id="subtitle" class="subtitle">Loading prices&hellip;</p>
+      </div>
+      <div class="masthead-side">
+        <div class="legend" aria-label="Chart legend">
+          <span><i class="swatch cheapest"></i>Cheapest listing</span>
+          <span><i class="swatch median"></i>Typical price</span>
+        </div>
+        <p class="side-note">All prices in Perfect Pitch. Troll and odd-sized listings are filtered out.</p>
+      </div>
+    </header>
+
+    <div class="ticker" id="ticker" aria-label="Price ticker" hidden>
+      <div class="ticker-track" id="ticker-track"></div>
+    </div>
+
+    <section id="search-results" class="results" hidden aria-live="polite"></section>
+
     <section id="grid" class="grid" aria-live="polite"></section>
+
+    <footer class="footer">
+      <span>Data from the playkuro.com market</span>
+      <span>Checked about every 30 minutes, even while this PC is off</span>
+    </footer>
   </main>
 
-  <dialog id="detail">
-    <div class="detail-head">
-      <div>
-        <h2 id="detail-title"></h2>
-        <div id="detail-sub" class="muted"></div>
+  <dialog id="detail" aria-labelledby="detail-title">
+    <div class="detail-inner">
+      <div class="detail-head">
+        <div>
+          <div id="detail-rule-label" class="eyebrow"></div>
+          <h2 id="detail-title"></h2>
+        </div>
+        <button id="detail-close" class="icon-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
       </div>
-      <button id="detail-close" class="ghost" aria-label="Close">✕</button>
+      <div id="detail-stats" class="detail-stats"></div>
+      <div class="segmented" role="group" aria-label="Time range">
+        <button data-range="1">24h</button>
+        <button data-range="7" class="active">7d</button>
+        <button data-range="30">30d</button>
+        <button data-range="0">All</button>
+      </div>
+      <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
+      <div class="detail-actions">
+        <label class="rule-select">Count listings as
+          <select id="detail-rule">
+            <option value="stack">9999 stacks</option>
+            <option value="unit">single units</option>
+          </select>
+        </label>
+        <button id="detail-remove" class="btn btn-danger">Stop tracking</button>
+      </div>
+      <h3>On the market now</h3>
+      <div id="detail-listings"></div>
     </div>
-    <div class="ranges" role="group" aria-label="Time range">
-      <button data-range="1">24h</button>
-      <button data-range="7" class="active">7d</button>
-      <button data-range="30">30d</button>
-      <button data-range="0">All</button>
-    </div>
-    <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
-    <div class="detail-actions">
-      <label>Rule
-        <select id="detail-rule">
-          <option value="stack">9999 stack</option>
-          <option value="unit">per unit</option>
-        </select>
-      </label>
-      <button id="detail-remove" class="danger">Remove from favourites</button>
-    </div>
-    <h3>Current listings</h3>
-    <div id="detail-listings" class="muted">Loading…</div>
   </dialog>
 
-  <div id="toast" class="toast" hidden></div>
+  <div id="toast" class="toast" role="status" hidden></div>
   <script src="app.js"></script>
 </body>
 </html>
