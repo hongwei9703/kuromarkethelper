@@ -1,5 +1,6 @@
 """Local dashboard server: serves the page and talks to GitHub and the market API."""
 import json
+import os
 import socket
 import sys
 import webbrowser
@@ -114,13 +115,17 @@ def _port_in_use() -> bool:
 
 
 def main() -> None:
+    if sys.stderr is None:  # started with pythonw: no console to write errors to
+        sys.stderr = open(os.devnull, "w")
     url = f"http://{HOST}:{PORT}"
+    open_browser = "--no-browser" not in sys.argv
     if _port_in_use():
-        webbrowser.open(url)
+        if open_browser:
+            webbrowser.open(url)
         return
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"Kuro Market dashboard on {url}", file=sys.stderr)
-    if "--no-browser" not in sys.argv:
+    if open_browser:
         webbrowser.open(url)
     server.serve_forever()
 
