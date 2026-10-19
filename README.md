@@ -4,7 +4,7 @@ Tracks prices on the [Kuro market](https://playkuro.com/market) for your favouri
 
 ## Setup (once)
 
-Double-click **`setup.bat`**. It installs what's missing, asks you to log in to GitHub once in your browser, creates the `kuro-market` repo on your GitHub account, and starts the price checks. When it's done you'll have a **Kuro Market** shortcut on your desktop.
+Double-click **`setup.bat`**. It installs what's missing, asks you to log in to GitHub once in your browser, links it to your GitHub repo (it creates one called `kuro-market` if none is linked yet), and starts the price checks. When it's done you'll have a **Kuro Market** shortcut on your desktop.
 
 ## Using it
 
