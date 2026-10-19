@@ -43,5 +43,10 @@
     "itemId": 4009165,
     "itemName": "Dark Fusion Fragment",
     "rule": "stack"
+  },
+  {
+    "itemId": 4038005,
+    "itemName": "Raven Ninja Coin",
+    "rule": "stack"
   }
 ]
