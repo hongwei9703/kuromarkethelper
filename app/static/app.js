@@ -8,13 +8,14 @@ const ICON = {
   flat: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6 H10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
   plus: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3 V13 M3 8 H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   check: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chevron: '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9 L12 15 L18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
 };
 
 let state = { favourites: [], history: {}, synced: false };
-let detailItem = null;
-let detailRange = 7;
-let detailChart = null;
+let expandedId = null;
+let panelRange = 7;
+let panelChart = null;
 const sparkCharts = [];
 
 const $ = (id) => document.getElementById(id);
@@ -25,7 +26,6 @@ const hasGsap = () => typeof window.gsap !== "undefined";
 const hasChart = () => typeof window.Chart !== "undefined";
 const motionOK = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-if (hasGsap() && window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
 
 function toast(msg) {
   const el = $("toast");
@@ -140,36 +140,32 @@ function timeLabel(ms, spanDays) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function sparkChart(canvas, points, feature) {
+/** Row sparkline: cheapest only, so its trend isn't flattened by the gap to the typical price. */
+function sparkChart(canvas, points) {
   return new Chart(canvas, {
     type: "line",
-    data: { datasets: lineDatasets(points, { fill: true }) },
+    data: { datasets: lineDatasets(points, { fill: true }).slice(0, 1) },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
       events: [],
-      layout: { padding: { top: 4, bottom: 2, right: feature ? 8 : 0 } },
+      layout: { padding: { top: 3, bottom: 3 } },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: {
-        x: { type: "linear", display: false },
-        y: feature
-          ? { position: "right", grace: "12%", border: { display: false }, grid: { color: css("--grid") }, ticks: { color: css("--muted"), maxTicksLimit: 4, font: { family: "Geist", size: 11 }, callback: (v) => fmt(v) } }
-          : { display: false, grace: "12%" },
-      },
+      scales: { x: { type: "linear", display: false }, y: { display: false, grace: "12%" } },
     },
   });
 }
 
-function renderDetailChart() {
-  if (!detailItem || !hasChart()) return;
-  const points = downsample(since(series(detailItem.itemId, detailItem.rule), detailRange), 168);
+function renderPanelChart(canvas, fav) {
+  if (!hasChart()) return;
+  const points = downsample(since(series(fav.itemId, fav.rule), panelRange), 168);
   const spanDays = points.length > 1 ? (points[points.length - 1].t - points[0].t) / DAY : 1;
-  if (detailChart) detailChart.destroy();
-  detailChart = new Chart($("detail-chart"), {
+  if (panelChart) panelChart.destroy();
+  panelChart = new Chart(canvas, {
     type: "line",
     data: { datasets: lineDatasets(points, { fill: true }) },
     options: {
       responsive: true, maintainAspectRatio: false, parsing: false,
-      animation: motionOK() ? { duration: 500, easing: "easeOutQuart" } : false,
+      animation: motionOK() ? { duration: 450, easing: "easeOutQuart" } : false,
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { display: false },
@@ -190,7 +186,7 @@ function renderDetailChart() {
         },
         y: {
           position: "right", border: { display: false }, grid: { color: css("--grid") }, grace: "10%",
-          ticks: { color: css("--muted"), maxTicksLimit: 6, font: { family: "Geist", size: 11 }, callback: (v) => fmt(v) },
+          ticks: { color: css("--muted"), maxTicksLimit: 5, font: { family: "Geist", size: 11 }, callback: (v) => fmt(v) },
         },
       },
     },
@@ -226,97 +222,76 @@ function renderTicker(views) {
   track.style.animationDuration = `${Math.max(30, live.length * 7)}s`;
 }
 
-function pickFeature(views) {
-  const moving = views.filter((v) => v.change != null);
-  if (moving.length) return moving.reduce((a, b) => (Math.abs(b.change) > Math.abs(a.change) ? b : a));
-  return views.find((v) => v.last && v.last.s) || null;
-}
-
-function cardHtml(v, feature) {
+function rowHtml(v) {
   const { fav, last } = v;
-  const head = `<div class="card-top"><div><div class="card-name">${esc(fav.itemName)}</div>
-      <div class="eyebrow">${feature ? `Biggest mover today · ${RULE_LABEL[fav.rule]}` : RULE_LABEL[fav.rule]}</div></div>
-      ${last && last.s ? chip(v.change) : ""}</div>`;
-  if (!last) return head + '<div class="card-empty">No data yet. The first check lands within 30 minutes.</div>';
-  if (!last.s) return head + '<div class="card-empty">No real listings right now</div><div class="spark"><canvas></canvas></div>';
-  return `${head}
-    <div class="card-price"><span class="big" data-value="${last.s.cheapest}">${fmt(last.s.cheapest)}</span></div>
-    <div class="card-median">typical <span class="num">${fmt(last.s.median)}</span> · ${last.s.listings} listings</div>
-    <div class="spark"><canvas></canvas></div>`;
-}
-
-/** Widen the last card so the final grid row never ends in an empty cell. */
-function closeGridGaps(grid) {
-  const cards = [...grid.querySelectorAll(".card")];
-  cards.forEach((c) => (c.style.gridColumn = ""));
-  const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length;
-  if (cols < 2 || !cards.length) return;
-  const feature = grid.querySelector(".card.feature");
-  const featureCells = feature ? (cols >= 2 ? 4 : 1) : 0;
-  const cells = featureCells + cards.length - (feature ? 1 : 0);
-  const rem = cells % cols;
-  if (!rem) return;
-  const last = cards[cards.length - 1];
-  if (last === feature) return;
-  last.style.gridColumn = `span ${cols - rem + 1}`;
-}
-
-function animateGrid(grid) {
-  if (!hasGsap() || !motionOK()) return;
-  if (window.ScrollTrigger) ScrollTrigger.getAll().forEach((t) => t.kill());
-  const cards = [...grid.querySelectorAll(".card")];
-  const from = { opacity: 0, y: 26, scale: 0.96 };
-  const to = { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.06, ease: "power3.out", overwrite: true, clearProps: "transform,opacity" };
-  // cards already on screen animate straight away; only cards below the fold wait for scroll
-  const below = window.ScrollTrigger ? cards.filter((c) => c.getBoundingClientRect().top > window.innerHeight) : [];
-  const visible = cards.filter((c) => !below.includes(c));
-  gsap.fromTo(visible, from, to);
-  if (below.length) {
-    gsap.set(below, from);
-    ScrollTrigger.batch(below, { start: "top 95%", onEnter: (batch) => gsap.to(batch, to) });
+  const s = last && last.s;
+  const name = `<span class="row-name"><strong title="${esc(fav.itemName)}">${esc(fav.itemName)}</strong><small>${RULE_LABEL[fav.rule]}</small></span>`;
+  if (!s) {
+    const note = last ? "No real listings right now" : "Waiting for the first check";
+    return `${name}<span class="row-spark">${last ? "<canvas></canvas>" : ""}</span>
+      <span class="r none" style="grid-column: span 4">${note}</span>${ICON.chevron}`;
   }
-  // safety net: never leave a card invisible if an animation stalls
-  setTimeout(() => cards.forEach((c) => {
-    if (getComputedStyle(c).opacity < 0.99 && c.getBoundingClientRect().top < window.innerHeight) gsap.set(c, { clearProps: "transform,opacity" });
-  }), 2500);
-  grid.querySelectorAll(".big[data-value]").forEach((el) => {
-    const target = Number(el.dataset.value);
-    const counter = { v: target * 0.82 };
-    gsap.to(counter, { v: target, duration: 1.1, ease: "power2.out", onUpdate: () => (el.textContent = fmt(Math.round(counter.v))) });
-  });
+  return `${name}<span class="row-spark"><canvas></canvas></span>
+    <span class="r price" data-value="${s.cheapest}">${fmt(s.cheapest)}</span>
+    <span class="r typical">${fmt(s.median)}</span>
+    <span class="r">${chip(v.change)}</span>
+    <span class="r count">${fmt(s.listings)}</span>
+    ${ICON.chevron}`;
 }
 
-function renderGrid(views) {
+function animateRows(container) {
+  if (!hasGsap() || !motionOK()) return;
+  const rows = container.querySelectorAll(".row-wrap");
+  gsap.fromTo(rows, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.035, ease: "power2.out", clearProps: "transform,opacity" });
+  container.querySelectorAll(".price[data-value]").forEach((el) => {
+    const target = Number(el.dataset.value);
+    const counter = { v: target * 0.85 };
+    gsap.to(counter, { v: target, duration: 0.9, ease: "power2.out", onUpdate: () => (el.textContent = fmt(Math.round(counter.v))) });
+  });
+  // safety net: never leave a row invisible if an animation stalls
+  setTimeout(() => rows.forEach((r) => {
+    if (getComputedStyle(r).opacity < 0.99) gsap.set(r, { clearProps: "transform,opacity" });
+  }), 2000);
+}
+
+function renderRows(views, { animate } = {}) {
   sparkCharts.splice(0).forEach((c) => c.destroy());
-  const grid = $("grid");
-  grid.innerHTML = "";
+  if (panelChart) { panelChart.destroy(); panelChart = null; }
+  const box = $("rows");
+  box.innerHTML = "";
   if (!views.length) {
-    grid.innerHTML = '<p class="grid-empty">No favourites yet. Search for an item above and add it.</p>';
+    box.innerHTML = '<p class="list-empty">No favourites yet. Search for an item above and add it.</p>';
     return;
   }
-  const feature = views.length >= 5 ? pickFeature(views) : null;
-  const ordered = feature ? [feature, ...views.filter((v) => v !== feature)] : views;
-  for (const v of ordered) {
-    const isFeature = v === feature;
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "card" + (isFeature ? " feature" : "");
-    card.innerHTML = cardHtml(v, isFeature);
-    card.addEventListener("click", () => openDetail(v.fav));
-    grid.appendChild(card);
-    const canvas = card.querySelector("canvas");
-    if (canvas && hasChart()) sparkCharts.push(sparkChart(canvas, downsample(since(v.points, 7), isFeature ? 84 : 42), isFeature));
+  for (const v of views) {
+    const wrap = document.createElement("div");
+    wrap.className = "row-wrap";
+    wrap.dataset.id = v.fav.itemId;
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "row";
+    row.setAttribute("aria-expanded", "false");
+    row.innerHTML = rowHtml(v);
+    row.addEventListener("click", () => toggleRow(v.fav.itemId));
+    wrap.appendChild(row);
+    box.appendChild(wrap);
+    const canvas = row.querySelector("canvas");
+    if (canvas && hasChart()) sparkCharts.push(sparkChart(canvas, downsample(since(v.points, 7), 42)));
   }
-  closeGridGaps(grid);
-  animateGrid(grid);
+  if (animate) animateRows(box);
+  if (expandedId != null) {
+    const fav = state.favourites.find((f) => f.itemId === expandedId);
+    if (fav) expandRow(fav, { animate: false });
+    else expandedId = null;
+  }
 }
 
-function render() {
+function render({ animate } = {}) {
   const views = state.favourites.map(itemView);
   renderSync();
   renderSubtitle(views);
   renderTicker(views);
-  renderGrid(views);
+  renderRows(views, { animate });
 }
 
 /** Free Market rooms are maps 910000001-910000022; anything else has no room number. */
@@ -332,37 +307,71 @@ function listingsTable(rows, rule) {
   return `<div class="table-scroll"><table><thead><tr><th>Seller</th><th>Channel</th><th>Room</th><th class="num">Price</th><th class="num">${unitHead}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
 }
 
-// ---- detail view -----------------------------------------------------------
+// ---- expanded row ----------------------------------------------------------
 
-function renderDetailStats(fav) {
-  const v = itemView(fav);
-  const s = v.last && v.last.s;
-  const stat = (label, value) => `<div><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
-  $("detail-stats").innerHTML = s
-    ? stat("Cheapest", fmt(s.cheapest)) + stat("Typical", fmt(s.median)) + stat("Listings", fmt(s.listings)) +
-      (v.change != null ? `<div><div class="stat-label">Since yesterday</div><div class="stat-value">${chip(v.change)}</div></div>` : "")
-    : '<p class="empty-note">No real listings recorded yet.</p>';
+function collapseRow({ animate = true } = {}) {
+  const wrap = document.querySelector(".row-wrap.open");
+  expandedId = null;
+  if (panelChart) { panelChart.destroy(); panelChart = null; }
+  if (!wrap) return;
+  wrap.classList.remove("open");
+  wrap.querySelector(".row").setAttribute("aria-expanded", "false");
+  const panel = wrap.querySelector(".panel");
+  if (!panel) return;
+  if (animate && hasGsap() && motionOK()) {
+    gsap.to(panel, { height: 0, opacity: 0, duration: 0.35, ease: "power2.inOut", onComplete: () => panel.remove() });
+  } else {
+    panel.remove();
+  }
 }
 
-async function openDetail(fav) {
-  detailItem = fav;
-  $("detail-title").textContent = fav.itemName;
-  $("detail-rule-label").textContent = `${RULE_LABEL[fav.rule]} · Perfect Pitch`;
-  $("detail-rule").value = fav.rule;
-  $("detail-listings").innerHTML = '<p class="empty-note">Loading listings&hellip;</p>';
-  renderDetailStats(fav);
-  const dlg = $("detail");
-  if (!dlg.open) {
-    dlg.showModal();
-    if (hasGsap() && motionOK()) gsap.fromTo(".detail-inner", { opacity: 0, y: 18, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" });
+function toggleRow(itemId) {
+  const wasOpen = expandedId === itemId;
+  collapseRow();
+  if (wasOpen) return;
+  const fav = state.favourites.find((f) => f.itemId === itemId);
+  if (fav) expandRow(fav, { animate: true });
+}
+
+async function expandRow(fav, { animate }) {
+  const wrap = document.querySelector(`.row-wrap[data-id="${fav.itemId}"]`);
+  if (!wrap) return;
+  expandedId = fav.itemId;
+  wrap.classList.add("open");
+  wrap.querySelector(".row").setAttribute("aria-expanded", "true");
+  const panel = $("panel-tpl").content.firstElementChild.cloneNode(true);
+  wrap.appendChild(panel);
+
+  const canvas = panel.querySelector("canvas");
+  panel.querySelectorAll(".segmented button").forEach((btn) => {
+    btn.classList.toggle("active", Number(btn.dataset.range) === panelRange);
+    btn.addEventListener("click", () => {
+      panelRange = Number(btn.dataset.range);
+      panel.querySelectorAll(".segmented button").forEach((b) => b.classList.toggle("active", b === btn));
+      renderPanelChart(canvas, fav);
+    });
+  });
+  const rule = panel.querySelector(".rule");
+  rule.value = fav.rule;
+  rule.addEventListener("change", () => changeFavourite({ action: "set_rule", itemId: fav.itemId, rule: rule.value }));
+  panel.querySelector(".remove").addEventListener("click", async () => {
+    if (!confirm(`Stop tracking ${fav.itemName}? Its price history is kept.`)) return;
+    expandedId = null;
+    await changeFavourite({ action: "remove", itemId: fav.itemId });
+  });
+
+  if (animate && hasGsap() && motionOK()) {
+    gsap.fromTo(panel, { height: 0, opacity: 0 }, { height: "auto", opacity: 1, duration: 0.45, ease: "power3.out" });
   }
-  renderDetailChart();
+  renderPanelChart(canvas, fav);
+
+  const listings = panel.querySelector(".listings");
+  listings.innerHTML = '<p class="empty-note">Loading listings&hellip;</p>';
   try {
     const rows = await api(`/api/listings?itemId=${fav.itemId}&rule=${fav.rule}&q=${encodeURIComponent(fav.itemName)}`);
-    if (detailItem !== fav) return;
-    $("detail-listings").innerHTML = listingsTable(rows, fav.rule);
+    if (expandedId === fav.itemId && panel.isConnected) listings.innerHTML = listingsTable(rows, fav.rule);
   } catch (e) {
-    if (detailItem === fav) $("detail-listings").innerHTML = `<p class="empty-note">Couldn't load listings: ${esc(e.message)}</p>`;
+    if (panel.isConnected) listings.innerHTML = `<p class="empty-note">Couldn't load listings: ${esc(e.message)}</p>`;
   }
 }
 
@@ -432,13 +441,13 @@ async function runSearch(query) {
 
 // ---- wiring ----------------------------------------------------------------
 
-async function refresh() {
+async function refresh({ animate } = {}) {
   try {
     state = await api("/api/state");
   } catch (e) {
     toast(`Couldn't load data: ${e.message}`);
   }
-  render();
+  render({ animate });
 }
 
 $("search-form").addEventListener("submit", (e) => {
@@ -448,45 +457,12 @@ $("search-form").addEventListener("submit", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "/" && document.activeElement.tagName !== "INPUT" && !$("detail").open) {
+  const tag = document.activeElement.tagName;
+  if (e.key === "/" && tag !== "INPUT" && tag !== "SELECT") {
     e.preventDefault();
     $("search-input").focus();
   }
+  if (e.key === "Escape" && expandedId != null && tag !== "INPUT") collapseRow();
 });
 
-$("detail-close").addEventListener("click", () => $("detail").close());
-$("detail").addEventListener("close", () => {
-  detailItem = null;
-  if (detailChart) { detailChart.destroy(); detailChart = null; }
-});
-$("detail").addEventListener("click", (e) => { if (e.target === $("detail")) $("detail").close(); });
-
-document.querySelectorAll(".segmented button").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".segmented button").forEach((b) => b.classList.toggle("active", b === btn));
-    detailRange = Number(btn.dataset.range);
-    renderDetailChart();
-  });
-});
-
-$("detail-rule").addEventListener("change", async (e) => {
-  const fav = detailItem;
-  await changeFavourite({ action: "set_rule", itemId: fav.itemId, rule: e.target.value });
-  const updated = state.favourites.find((f) => f.itemId === fav.itemId);
-  if (updated) openDetail(updated);
-});
-
-$("detail-remove").addEventListener("click", async () => {
-  const fav = detailItem;
-  if (!confirm(`Stop tracking ${fav.itemName}? Its price history is kept.`)) return;
-  $("detail").close();
-  await changeFavourite({ action: "remove", itemId: fav.itemId });
-});
-
-let resizeTimer;
-window.addEventListener("resize", () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => closeGridGaps($("grid")), 120);
-});
-
-refresh();
+refresh({ animate: true });
