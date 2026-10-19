@@ -1,0 +1,47 @@
+[
+  {
+    "itemId": 4037046,
+    "itemName": "Dual Blade's Hyper II",
+    "rule": "unit"
+  },
+  {
+    "itemId": 4037054,
+    "itemName": "Phantom's Hyper II",
+    "rule": "unit"
+  },
+  {
+    "itemId": 4037032,
+    "itemName": "Dark Knight's Hyper II",
+    "rule": "unit"
+  },
+  {
+    "itemId": 4009243,
+    "itemName": "Mihile's Approval",
+    "rule": "stack"
+  },
+  {
+    "itemId": 4009245,
+    "itemName": "Irena's Approval",
+    "rule": "stack"
+  },
+  {
+    "itemId": 4009246,
+    "itemName": "Eckhart's Approval",
+    "rule": "stack"
+  },
+  {
+    "itemId": 4009244,
+    "itemName": "Oz's Approval",
+    "rule": "stack"
+  },
+  {
+    "itemId": 4009247,
+    "itemName": "Hawkeye's Approval",
+    "rule": "stack"
+  },
+  {
+    "itemId": 4009165,
+    "itemName": "Dark Fusion Fragment",
+    "rule": "stack"
+  }
+]
