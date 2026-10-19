@@ -2,13 +2,20 @@
 import statistics
 from typing import Literal
 
-Rule = Literal["unit", "stack"]
-RULES: tuple[Rule, ...] = ("unit", "stack")
+Rule = Literal["unit", "stack", "equip"]
+RULES: tuple[Rule, ...] = ("unit", "stack", "equip")
 CURRENCY = "PERFECT_PITCH"
 STACK_SIZE = 9999
 
 
-def default_rule(item_name: str) -> Rule:
+def is_equipment(item_id: int | None) -> bool:
+    """MapleStory equipment item IDs are 1xxxxxx."""
+    return item_id is not None and 1_000_000 <= item_id < 2_000_000
+
+
+def default_rule(item_name: str, item_id: int | None = None) -> Rule:
+    if is_equipment(item_id):
+        return "equip"
     return "unit" if "hyper" in item_name.lower() else "stack"
 
 
@@ -16,6 +23,8 @@ def _keep(listing: dict, rule: Rule) -> bool:
     qty = listing.get("quantityPerBundle")
     if rule == "unit":
         return qty == 1 and (listing.get("bundles") or 0) > 1
+    if rule == "equip":  # equipment is always sold one piece at a time
+        return qty == 1
     return qty == STACK_SIZE
 
 

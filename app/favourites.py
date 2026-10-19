@@ -16,7 +16,7 @@ def apply_change(favs: list[dict], change: dict) -> list[dict]:
         name = (change.get("itemName") or "").strip()
         if not name:
             raise ValueError("itemName is required")
-        rule = change.get("rule") or default_rule(name)
+        rule = change.get("rule") or default_rule(name, item_id)
         if rule not in RULES:
             raise ValueError(f"unknown rule: {rule}")
         return out + [{"itemId": item_id, "itemName": name, "rule": rule}]

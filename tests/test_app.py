@@ -16,6 +16,18 @@ class FavouritesTest(unittest.TestCase):
         self.assertEqual(out[-1], {"itemId": 2, "itemName": "Phantom's Hyper II", "rule": "unit"})
         self.assertEqual(len(FAVS), 1)
 
+    def test_add_equipment_uses_equip_rule(self):
+        out = apply_change(FAVS, {"action": "add", "itemId": 1072489, "itemName": "Shark Tooth Skipper Boots"})
+        self.assertEqual(out[-1]["rule"], "equip")
+
+    def test_search_payload_equipment_has_listings(self):
+        rows = [{**L(40000, 1, 1, item_id=1072489), "itemName": "Shark Tooth Skipper Boots"},
+                {**L(10000, 1, 1, item_id=1072489), "itemName": "Shark Tooth Skipper Boots"}]
+        [entry] = search_payload("shark tooth", search_fn=lambda q: rows)
+        self.assertEqual(entry["defaultRule"], "equip")
+        self.assertEqual([r["pricePerBundle"] for r in entry["listings"]], [10000, 40000])
+        self.assertEqual(entry["equip"]["cheapest"], 10000)
+
     def test_add_existing_is_noop(self):
         out = apply_change(FAVS, {"action": "add", "itemId": 1, "itemName": "Oz's Approval"})
         self.assertEqual(out, FAVS)

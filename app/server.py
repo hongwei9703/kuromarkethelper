@@ -36,7 +36,7 @@ def search_payload(query: str, search_fn=api.search) -> list[dict]:
     for item_id, name in names.items():
         if item_id is None:
             continue
-        rule = default_rule(name)
+        rule = default_rule(name, item_id)
         entry = {"itemId": item_id, "itemName": name, "defaultRule": rule}
         for r in RULES:
             entry[r] = summarize(filter_listings(rows, item_id, r))

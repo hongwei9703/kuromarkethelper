@@ -17,8 +17,9 @@ Double-click **`setup.bat`**. It installs what's missing, asks you to log in to 
 
 - **per unit** (Hyper skills): price per single item; sellers with only 1 in stock are ignored.
 - **9999 stack** (Approvals, Fragments, everything else): only stacks of 9,999 count.
+- **per item** (equipment): every listing counts, since equipment is always sold one piece at a time.
 
-New items get "per unit" if their name contains "Hyper", otherwise "9999 stack". You can switch it per item.
+New items get "per item" if they're equipment, "per unit" if their name contains "Hyper", otherwise "9999 stack". You can switch it per item.
 
 ## How it works
 

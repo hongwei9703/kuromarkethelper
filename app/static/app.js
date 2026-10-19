@@ -1,6 +1,6 @@
 "use strict";
 
-const RULE_LABEL = { stack: "per 9999 stack", unit: "per unit" };
+const RULE_LABEL = { stack: "per 9999 stack", unit: "per unit", equip: "per item" };
 const DAY = 24 * 60 * 60 * 1000;
 const ICON = {
   down: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2 V10 M2.5 6.5 L6 10 L9.5 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -327,7 +327,7 @@ function room(mapId) {
 
 function listingsTable(rows, rule) {
   if (!rows.length) return '<p class="empty-note">No listings match this rule right now.</p>';
-  const unitHead = rule === "unit" ? "In stock" : "Stacks";
+  const unitHead = rule === "stack" ? "Stacks" : "In stock";
   const trs = rows.map((r) => `<tr><td>${esc(r.shopOwner)}</td><td>Ch ${esc(r.channel)}</td><td>${room(r.mapId) == null ? "-" : `Room ${room(r.mapId)}`}</td><td class="num">${fmt(r.pricePerBundle)}</td><td class="num">${fmt(r.bundles)}</td></tr>`).join("");
   return `<div class="table-scroll"><table><thead><tr><th>Seller</th><th>Channel</th><th>Room</th><th class="num">Price</th><th class="num">${unitHead}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
 }
