@@ -319,11 +319,17 @@ function render() {
   renderGrid(views);
 }
 
+/** Free Market rooms are maps 910000001-910000022; anything else has no room number. */
+function room(mapId) {
+  const n = Number(mapId) - 910000000;
+  return n >= 1 && n <= 99 ? n : null;
+}
+
 function listingsTable(rows, rule) {
   if (!rows.length) return '<p class="empty-note">No listings match this rule right now.</p>';
   const unitHead = rule === "unit" ? "In stock" : "Stacks";
-  const trs = rows.map((r) => `<tr><td>${esc(r.shopOwner)}</td><td>Ch ${esc(r.channel)}</td><td class="num">${fmt(r.pricePerBundle)}</td><td class="num">${fmt(r.bundles)}</td></tr>`).join("");
-  return `<div class="table-scroll"><table><thead><tr><th>Seller</th><th>Channel</th><th class="num">Price</th><th class="num">${unitHead}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+  const trs = rows.map((r) => `<tr><td>${esc(r.shopOwner)}</td><td>Ch ${esc(r.channel)}</td><td>${room(r.mapId) == null ? "-" : `Room ${room(r.mapId)}`}</td><td class="num">${fmt(r.pricePerBundle)}</td><td class="num">${fmt(r.bundles)}</td></tr>`).join("");
+  return `<div class="table-scroll"><table><thead><tr><th>Seller</th><th>Channel</th><th>Room</th><th class="num">Price</th><th class="num">${unitHead}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
 }
 
 // ---- detail view -----------------------------------------------------------
