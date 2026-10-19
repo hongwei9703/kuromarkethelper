@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from app.favourites import apply_change
-from app.server import load_state, search_payload
+from app.server import listings_payload, load_state, search_payload
 from tests.test_rules import L
 from tracker import store
 
@@ -48,6 +48,15 @@ class ServerTest(unittest.TestCase):
         self.assertEqual([r["pricePerBundle"] for r in by_id[10]["listings"]], [12, 15])
         self.assertTrue(all(r["itemId"] == 11 for r in by_id[11]["listings"]))
         self.assertEqual(by_id[10]["unit"]["cheapest"], 12)
+
+    def test_listings_payload_uses_given_rule(self):
+        rows = [L(2500, 9999, 1, item_id=5), L(900, 1, 4000, item_id=5), L(2400, 9999, 1, item_id=6)]
+        out = listings_payload("Approval", 5, "stack", search_fn=lambda q: rows)
+        self.assertEqual([r["pricePerBundle"] for r in out], [2500])
+        out = listings_payload("Approval", 5, "unit", search_fn=lambda q: rows)
+        self.assertEqual([r["pricePerBundle"] for r in out], [900])
+        with self.assertRaises(ValueError):
+            listings_payload("Approval", 5, "bogus", search_fn=lambda q: rows)
 
     def test_load_state_without_history(self):
         with tempfile.TemporaryDirectory() as tmp:

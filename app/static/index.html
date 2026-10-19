@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kuro Market</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="top">
+    <h1>Kuro Market</h1>
+    <span id="sync" class="badge">Loading…</span>
+  </header>
+
+  <main>
+    <form id="search-form" class="search" autocomplete="off">
+      <input id="search-input" type="search" placeholder="Search any item… (e.g. Hyper II, Approval)" aria-label="Search items">
+      <button type="submit">Search</button>
+    </form>
+    <section id="search-results" class="results" hidden></section>
+
+    <div class="legend" aria-label="Chart legend">
+      <span><i class="swatch cheapest"></i>Cheapest</span>
+      <span><i class="swatch median"></i>Typical (median)</span>
+      <span class="muted">Prices in Perfect Pitch</span>
+    </div>
+    <section id="grid" class="grid" aria-live="polite"></section>
+  </main>
+
+  <dialog id="detail">
+    <div class="detail-head">
+      <div>
+        <h2 id="detail-title"></h2>
+        <div id="detail-sub" class="muted"></div>
+      </div>
+      <button id="detail-close" class="ghost" aria-label="Close">✕</button>
+    </div>
+    <div class="ranges" role="group" aria-label="Time range">
+      <button data-range="1">24h</button>
+      <button data-range="7" class="active">7d</button>
+      <button data-range="30">30d</button>
+      <button data-range="0">All</button>
+    </div>
+    <div class="chart-wrap"><canvas id="detail-chart"></canvas></div>
+    <div class="detail-actions">
+      <label>Rule
+        <select id="detail-rule">
+          <option value="stack">9999 stack</option>
+          <option value="unit">per unit</option>
+        </select>
+      </label>
+      <button id="detail-remove" class="danger">Remove from favourites</button>
+    </div>
+    <h3>Current listings</h3>
+    <div id="detail-listings" class="muted">Loading…</div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

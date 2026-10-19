@@ -44,6 +44,13 @@ def search_payload(query: str, search_fn=api.search) -> list[dict]:
     return sorted(out, key=lambda e: e["itemName"])
 
 
+def listings_payload(query: str, item_id: int, rule: str, search_fn=api.search) -> list[dict]:
+    if rule not in RULES:
+        raise ValueError(f"unknown rule: {rule}")
+    rows = filter_listings(search_fn(query), item_id, rule)
+    return sorted(rows, key=lambda x: x["pricePerBundle"])
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(STATIC), **kwargs)
@@ -70,6 +77,17 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(400, {"error": "empty search"})
             try:
                 return self._json(200, search_payload(query))
+            except api.SearchError as e:
+                return self._json(502, {"error": str(e)})
+        if url.path == "/api/listings":
+            params = parse_qs(url.query)
+            try:
+                item_id = int((params.get("itemId") or [""])[0])
+                rule = (params.get("rule") or [""])[0]
+                query = (params.get("q") or [""])[0].strip()
+                return self._json(200, listings_payload(query, item_id, rule))
+            except ValueError as e:
+                return self._json(400, {"error": str(e)})
             except api.SearchError as e:
                 return self._json(502, {"error": str(e)})
         return super().do_GET()
@@ -102,7 +120,8 @@ def main() -> None:
         return
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"Kuro Market dashboard on {url}", file=sys.stderr)
-    webbrowser.open(url)
+    if "--no-browser" not in sys.argv:
+        webbrowser.open(url)
     server.serve_forever()
 
 
