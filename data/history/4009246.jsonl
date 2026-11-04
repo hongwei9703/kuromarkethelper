@@ -79,3 +79,4 @@
 {"t":"2026-11-03T21:55:45Z","unit":{"cheapest":2100,"median":2100,"listings":1,"stock":9999},"stack":{"cheapest":3299,"median":3499,"listings":20,"stock":20},"equip":{"cheapest":2100,"median":2100,"listings":1,"stock":9999}}
 {"t":"2026-11-04T02:02:03Z","unit":{"cheapest":2600,"median":2750.0,"listings":4,"stock":39703},"stack":{"cheapest":2600,"median":3498.5,"listings":31,"stock":31},"equip":{"cheapest":2600,"median":2750.0,"listings":4,"stock":39703}}
 {"t":"2026-11-04T09:41:50Z","unit":{"cheapest":2600,"median":2750.0,"listings":4,"stock":39703},"stack":{"cheapest":2399,"median":2550,"listings":41,"stock":41},"equip":{"cheapest":2600,"median":2750.0,"listings":4,"stock":39703}}
+{"t":"2026-11-04T17:50:31Z","unit":null,"stack":{"cheapest":3498,"median":3749.5,"listings":17,"stock":17},"equip":null}
