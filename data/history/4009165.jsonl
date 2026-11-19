@@ -134,3 +134,4 @@
 {"t":"2026-11-18T20:49:20Z","unit":{"cheapest":1,"median":1,"listings":3,"stock":21331},"stack":{"cheapest":299,"median":872.0,"listings":220,"stock":220},"equip":{"cheapest":1,"median":650.5,"listings":4,"stock":21332}}
 {"t":"2026-11-19T02:22:33Z","unit":{"cheapest":1,"median":1.0,"listings":4,"stock":31330},"stack":{"cheapest":399,"median":999,"listings":194,"stock":194},"equip":{"cheapest":1,"median":1,"listings":5,"stock":31331}}
 {"t":"2026-11-19T10:39:12Z","unit":{"cheapest":1,"median":1,"listings":3,"stock":21331},"stack":{"cheapest":700,"median":999,"listings":173,"stock":173},"equip":{"cheapest":1,"median":650.5,"listings":4,"stock":21332}}
+{"t":"2026-11-19T19:24:38Z","unit":{"cheapest":1,"median":1,"listings":3,"stock":21329},"stack":{"cheapest":555,"median":916.5,"listings":154,"stock":154},"equip":{"cheapest":1,"median":200.5,"listings":4,"stock":21330}}
